@@ -3,7 +3,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.8.34309.116
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Zettai", "Zettai\Zettai.fsproj", "{568B42B9-D220-4592-8EF7-DC89D91FF751}"
+Project("{6EC3EE1D-3C4E-46DD-8F32-0CC8E7565705}") = "Zettai", "Zettai\Zettai.fsproj", "{568B42B9-D220-4592-8EF7-DC89D91FF751}"
+EndProject
+Project("{F2A71F9B-5D33-465A-A702-920D77279786}") = "Zettai.SlowTests", "Zettai.SlowTests\Zettai.SlowTests.fsproj", "{3875FB9A-D0A8-49B6-9E6B-836BDA3611A3}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -15,6 +17,10 @@ Global
 		{568B42B9-D220-4592-8EF7-DC89D91FF751}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{568B42B9-D220-4592-8EF7-DC89D91FF751}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{568B42B9-D220-4592-8EF7-DC89D91FF751}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3875FB9A-D0A8-49B6-9E6B-836BDA3611A3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3875FB9A-D0A8-49B6-9E6B-836BDA3611A3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3875FB9A-D0A8-49B6-9E6B-836BDA3611A3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3875FB9A-D0A8-49B6-9E6B-836BDA3611A3}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

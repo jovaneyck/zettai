@@ -4,7 +4,14 @@ open Microsoft.Extensions.Hosting
 open Microsoft.Extensions.DependencyInjection
 open Giraffe
 
-let webApp = choose [ route "/" >=> text "Hello world!" ]
+let helloWorld: HttpHandler = text "Hello world!"
+
+let showList (user, list) =
+    text $"Here is the list {list} for user {user}."
+
+let webApp =
+    choose [ GET >=> route "/" >=> helloWorld
+             GET >=> (routef "/todo/%s/%s" showList) ]
 
 let configureApp (app: IApplicationBuilder) = app.UseGiraffe webApp
 
