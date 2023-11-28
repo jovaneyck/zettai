@@ -17,16 +17,13 @@ let configureApp (app: IApplicationBuilder) = app.UseGiraffe webApp
 
 let configureServices (services: IServiceCollection) = services.AddGiraffe() |> ignore
 
+let webBuilder () : IWebHostBuilder =
+    WebHostBuilder()
+        .Configure(configureApp)
+        .ConfigureServices(configureServices)
+
 [<EntryPoint>]
 let main _ =
-    Host
-        .CreateDefaultBuilder()
-        .ConfigureWebHostDefaults(fun whb ->
-            whb
-                .Configure(configureApp)
-                .ConfigureServices(configureServices)
-            |> ignore)
-        .Build()
-        .Run()
+    (webBuilder ()).Build().Run()
 
     0
