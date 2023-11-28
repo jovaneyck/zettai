@@ -2,14 +2,13 @@
 
 open Xunit
 open Swensen.Unquote
-open Program
 open Microsoft.AspNetCore.Hosting
 
 module AcceptanceTests =
     let buildClient () = 
         let app = new Microsoft.AspNetCore.TestHost.TestServer(
             new WebHostBuilder() 
-            |> configure)
+            |> ZettaiHost.configure)
         let client = app.CreateClient()
         client
 
