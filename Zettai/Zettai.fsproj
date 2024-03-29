@@ -5,12 +5,18 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="Types.fs" />
     <Compile Include="ZettaiHost.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Giraffe" Version="6.2.0" />
+    <PackageReference Include="FSharp.SystemTextJson" Version="1.2.42" />
+    <PackageReference Include="Giraffe" Version="6.3.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Update="FSharp.Core" Version="8.0.200" />
   </ItemGroup>
 
 </Project>
