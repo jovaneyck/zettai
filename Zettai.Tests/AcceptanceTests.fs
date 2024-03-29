@@ -69,7 +69,7 @@ module AcceptanceTests =
     [<Fact>]
     let ``Renders lists for a user`` () =
         let petList =
-            { Name = ListName "pets"
+            { Name = ListName.fromTrusted "pets"
               Items = [ { Description = "nestor" } ] }
 
         use client = [ User "jo", [ petList ] ] |> buildClient
@@ -81,7 +81,9 @@ module AcceptanceTests =
     [<Fact>]
     let ``Add item to existing list`` () =
         use client =
-            [ User "jo", [ { Name = ListName "pets"; Items = [] } ] ]
+            [ User "jo",
+              [ { Name = ListName.fromTrusted "pets"
+                  Items = [] } ] ]
             |> buildClient
 
         let response =
@@ -93,7 +95,7 @@ module AcceptanceTests =
         let response = client |> getJson<ToDoList> "/todo/jo/pets"
 
         test
-            <@ response = { Name = ListName "pets"
+            <@ response = { Name = ListName.fromTrusted "pets"
                             Items = [ { Description = "nestor" } ] } @>
 
     [<Fact>]
@@ -106,4 +108,18 @@ module AcceptanceTests =
 
         let response = client |> getJson<ToDoList> "/todo/jo/pets"
 
-        test <@ response = { Name = ListName "pets"; Items = [] } @>
+        test
+            <@ response = { Name = ListName.fromTrusted "pets"
+                            Items = [] } @>
+
+
+    [<Fact>]
+    let ``Rejects invalid list names`` () =
+        use client = [ User "jo", [] ] |> buildClient
+
+        let response =
+            client
+            |> post "/todo/jo/this-list-name-is-too-long-1234567890123456789012345678901234567890"
+
+        test <@ response.StatusCode = System.Net.HttpStatusCode.BadRequest @>
+        test <@ response.Content.ReadAsStringAsync().Result = "list name should not be more than 40 chars" @>

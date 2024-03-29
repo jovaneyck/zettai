@@ -14,6 +14,8 @@ POST {{base_url}}/todo/jo/new-list
 ###
 GET {{base_url}}/todo/jo/new-list
 ###
+POST {{base_url}}/todo/jo/new-list-1234567890123456789012345678901234567890
+###
 POST {{base_url}}/todo/jo/books/item
 Content-Type: application/json
 

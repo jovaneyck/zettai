@@ -10,24 +10,30 @@ open Types
 
 let showList (lookup: ListLookup) =
     fun (userName, listName) ->
-        let list = lookup (User userName) (ListName listName)
+        let list = lookup (User userName) (ListName.fromUntrusted listName)
         json list
 
 let addList (write: ListWrite) =
     fun (userName, listName) ->
         let user = User userName
 
-        let newList = { Name = ListName listName; Items = [] }
+        try
+            let name = ListName.fromUntrusted listName
+            let newList = { Name = name; Items = [] }
 
-        write user newList
+            write user newList
 
-        setStatusCode ((int) System.Net.HttpStatusCode.Created)
+            setStatusCode ((int) System.Net.HttpStatusCode.Created)
+        with
+        | ValidationException msg ->
+            setStatusCode ((int) System.Net.HttpStatusCode.BadRequest)
+            >=> text (sprintf "list name %s" msg)
 
 let addItem (lookup: ListLookup) (write: ListWrite) =
     fun (userName, listName) (next: HttpFunc) (ctx: HttpContext) ->
         let newItem = ctx.BindJsonAsync<ToDoItem>().Result
         let user = User userName
-        let list = lookup user (ListName listName)
+        let list = lookup user (ListName.fromUntrusted listName)
         let updated = { list with Items = newItem :: list.Items }
         write user updated
 

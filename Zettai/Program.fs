@@ -7,8 +7,8 @@ type Database = Map<User, Map<ListName, ToDoList>> ref
 
 let db: Database =
     [ User "jo",
-      [ (ListName "books",
-         { Name = ListName "books"
+      [ (ListName.fromTrusted "books",
+         { Name = ListName.fromTrusted "books"
            Items =
              [ { Description = "Tidy First?" }
                { Description = "Team Topologies" } ] }) ]
