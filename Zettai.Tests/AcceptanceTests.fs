@@ -15,18 +15,12 @@ module AcceptanceTests =
     let serialize (thing: 'a) =
         JsonSerializer.Serialize<'a>(thing, ZettaiHost.serializationOptions)
 
-    let buildApp db =
-        let rdb =
-            db
-            |> Map.ofList
-            |> Map.map (fun _ v -> v |> List.map (fun l -> l.Name, l) |> Map.ofList)
-            |> ref
-
-        let store: ListEvent list ref = [] |> ref
+    let buildApp store =
+        let store: Program.InMemoryEventStore = store |> Seq.ofList |> ref
 
         new Microsoft.AspNetCore.TestHost.TestServer(
             new WebHostBuilder()
-            |> ZettaiHost.configure (Program.mapLookup rdb) (Program.mapWrite rdb) (Program.writeEvent store)
+            |> ZettaiHost.configure (Program.streamLookup store) (Program.writeEvent store)
         )
 
     let createClient (ts: TestServer) = ts.CreateClient()
@@ -53,7 +47,7 @@ module AcceptanceTests =
 
     [<Fact>]
     let ``App bootstraps`` () =
-        use client = [] |> buildClient
+        use client = buildClient []
 
         let response = client |> get "/"
 
@@ -62,7 +56,7 @@ module AcceptanceTests =
 
     [<Fact>]
     let ``404 on unknown url's`` () =
-        use client = [] |> buildClient
+        use client = buildClient []
 
         let response = client |> get "/invalid-url"
 
@@ -70,11 +64,22 @@ module AcceptanceTests =
 
     [<Fact>]
     let ``Renders lists for a user`` () =
+        let listName = ListName.fromUntrusted "pets"
+
         let petList =
             { Name = ListName.fromTrusted "pets"
               Items = [ { Description = "nestor" } ] }
 
-        use client = [ User "jo", [ petList ] ] |> buildClient
+        let events =
+            [ { AggregateId = listName
+                Data = ListCreated { User = User "jo"; List = listName } }
+              { AggregateId = listName
+                Data =
+                  ItemAddedToList
+                      { List = listName
+                        Item = { Description = "nestor" } } } ]
+
+        use client = buildClient events
 
         let parsed = client |> getJson<ToDoList> "/todo/jo/pets"
 
@@ -83,10 +88,11 @@ module AcceptanceTests =
     [<Fact>]
     let ``Add item to existing list`` () =
         use client =
-            [ User "jo",
-              [ { Name = ListName.fromTrusted "pets"
-                  Items = [] } ] ]
-            |> buildClient
+            buildClient [ { AggregateId = ListName.fromTrusted "pets"
+                            Data =
+                              ListCreated
+                                  { User = User "jo"
+                                    List = ListName.fromTrusted "pets" } } ]
 
         let response =
             client
@@ -102,7 +108,7 @@ module AcceptanceTests =
 
     [<Fact>]
     let ``Add a new empty list`` () =
-        use client = [ User "jo", [] ] |> buildClient
+        use client = buildClient []
 
         let response = client |> post "/todo/jo/pets"
 
@@ -114,10 +120,9 @@ module AcceptanceTests =
             <@ response = { Name = ListName.fromTrusted "pets"
                             Items = [] } @>
 
-
     [<Fact>]
     let ``Rejects invalid list names`` () =
-        use client = [ User "jo", [] ] |> buildClient
+        use client = buildClient []
 
         let response =
             client

@@ -1,5 +1,10 @@
 ﻿module Types
 
+type Event<'tid, 'tdata> = { AggregateId: 'tid; Data: 'tdata }
+type CommandHandler<'tid, 'tcmd, 'tevent> = 'tcmd -> Event<'tid, 'tevent> list
+type EventStream<'tid, 'tevent> = 'tid -> 'tevent seq
+type EventWriter<'tid, 'tevent> = Event<'tid, 'tevent> -> unit
+
 exception ValidationException of string
 
 type User = User of string
@@ -21,8 +26,11 @@ type ToDoList =
     { Name: ListName
       Items: ToDoItem list }
 
+[<AutoOpen>]
+module ToDoList =
+    let initial name = { Name = name; Items = [] }
+
 type ListLookup = User -> ListName -> ToDoList
-type ListWrite = User -> ToDoList -> unit
 
 type CreateListData = { User: User; List: ListName }
 type ItemData = { Description: string }
@@ -36,26 +44,35 @@ type ListCommand =
     | CreateList of CreateListData
     | AddItemToList of AddItemToListData
 
+type ListCreatedData = { User: User; List: ListName }
+type ItemAddedToListData = { List: ListName; Item: ItemData }
+
 type ListEvent =
-    | ListCreated of CreateListData
-    | ItemAddedToList of AddItemToListData
+    | ListCreated of ListCreatedData
+    | ItemAddedToList of ItemAddedToListData
 
-type CommandHandler = ListCommand -> ListEvent list
-type EventWriter = ListEvent -> unit
+module ListEvent =
+    let fold acc events =
+        let folder list event =
+            match event with
+            | ListCreated c -> { Name = c.List; Items = [] }
+            | ItemAddedToList a -> { list with Items = { Description = a.Item.Description } :: list.Items }
 
-let createList writer (cmd: CreateListData) =
-    let list = { Name = cmd.List; Items = [] }
-    writer cmd.User list
-    [ ListCreated cmd ]
+        events |> Seq.fold folder acc
 
-let addItemToList lookup writer (cmd: AddItemToListData) =
-    let list = lookup cmd.User cmd.List
-    let newItem: ToDoItem = { Description = cmd.Item.Description }
-    let updated = { list with Items = newItem :: list.Items }
-    writer cmd.User updated
-    [ ItemAddedToList cmd ]
+let createList (cmd: CreateListData) =
+    [ { AggregateId = cmd.List
+        Data = ListCreated { User = cmd.User; List = cmd.List } } ]
 
-let handleCommand (lookup: ListLookup) (writer: ListWrite) (cmd: ListCommand) : ListEvent list =
-    match cmd with
-    | CreateList c -> createList writer c
-    | AddItemToList d -> addItemToList lookup writer d
+let addItemToList (cmd: AddItemToListData) =
+    [ { AggregateId = cmd.List
+        Data =
+          ItemAddedToList
+              { List = cmd.List
+                Item = { Description = cmd.Item.Description } } } ]
+
+let handleCommand (lookup: ListLookup) : CommandHandler<ListName, ListCommand, ListEvent> =
+    fun cmd ->
+        match cmd with
+        | CreateList c -> createList c
+        | AddItemToList d -> addItemToList d

@@ -13,7 +13,10 @@ let showList (lookup: ListLookup) =
         let list = lookup (User userName) (ListName.fromUntrusted listName)
         json list
 
-let addList (handler: CommandHandler) (eventWriter: EventWriter) =
+let addList
+    (handler: CommandHandler<ListName, ListCommand, ListEvent>)
+    (eventWriter: EventWriter<ListName, ListEvent>)
+    =
     fun (userName, listName) ->
         try
             let user = User userName
@@ -28,7 +31,7 @@ let addList (handler: CommandHandler) (eventWriter: EventWriter) =
             setStatusCode ((int) System.Net.HttpStatusCode.BadRequest)
             >=> text (sprintf "list name %s" msg)
 
-let addItem (handler: CommandHandler) (eventWriter: EventWriter) =
+let addItem handler eventWriter =
     fun (userName, listName) (next: HttpFunc) (ctx: HttpContext) ->
         let newItem = ctx.BindJsonAsync<ItemData>().Result
         let user = User userName
@@ -44,17 +47,17 @@ let addItem (handler: CommandHandler) (eventWriter: EventWriter) =
 
         setStatusCode ((int) System.Net.HttpStatusCode.OK) next ctx
 
-let webApp (lookup: ListLookup) (write: ListWrite) (writeEvent: EventWriter) =
+let webApp (lookup: ListLookup) writeEvent =
     choose [ GET >=> route "/" >=> text "Hello world!"
              GET >=> routef "/todo/%s/%s" (showList lookup)
              POST
-             >=> routef "/todo/%s/%s" (addList (Types.handleCommand lookup write) writeEvent)
+             >=> routef "/todo/%s/%s" (addList (Types.handleCommand lookup) writeEvent)
              POST
-             >=> routef "/todo/%s/%s/item" (addItem (Types.handleCommand lookup write) writeEvent)
+             >=> routef "/todo/%s/%s/item" (addItem (Types.handleCommand lookup) writeEvent)
              RequestErrors.NOT_FOUND "Not Found" ]
 
-let configureApp (lookup: ListLookup) (write: ListWrite) (eventWriter: EventWriter) (app: IApplicationBuilder) =
-    app.UseGiraffe(webApp lookup write eventWriter)
+let configureApp (lookup: ListLookup) eventWriter (app: IApplicationBuilder) =
+    app.UseGiraffe(webApp lookup eventWriter)
 
 let serializationOptions =
     let o =
@@ -71,7 +74,7 @@ let configureServices (services: IServiceCollection) =
         .AddSingleton<Json.ISerializer>(SystemTextJson.Serializer(serializationOptions))
     |> ignore
 
-let configure (lookup: ListLookup) (write: ListWrite) (eventWriter: EventWriter) (whb: IWebHostBuilder) =
+let configure (lookup: ListLookup) eventWriter (whb: IWebHostBuilder) =
     whb
-        .Configure((configureApp lookup write eventWriter))
+        .Configure((configureApp lookup eventWriter))
         .ConfigureServices(configureServices)

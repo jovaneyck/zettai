@@ -4,41 +4,25 @@ open Microsoft.Extensions.Hosting
 open Types
 
 type Database = Map<User, Map<ListName, ToDoList>> ref
-let store = ref []
+type InMemoryEventStore = Event<ListName, ListEvent> seq ref
+let store: InMemoryEventStore = ref []
 
-let db: Database =
-    [ User "jo",
-      [ (ListName.fromTrusted "books",
-         { Name = ListName.fromTrusted "books"
-           Items =
-             [ { Description = "Tidy First?" }
-               { Description = "Team Topologies" } ] }) ]
-      |> Map.ofList ]
-    |> Map.ofList
-    |> ref
+let streamLookup (store: InMemoryEventStore) : ListLookup =
+    fun u ln ->
+        store.Value
+        |> Seq.filter (fun e -> e.AggregateId = ln)
+        |> Seq.map (fun e -> e.Data)
+        |> ListEvent.fold (ToDoList.initial ln)
 
-let mapLookup (db: Database) : ListLookup =
-    fun u l ->
-        let listsForUser = db.Value |> Map.find u
-        let list = listsForUser |> Map.find l
-
-        list
-
-let mapWrite (db: Database) : ListWrite =
-    fun u l ->
-        let updatedLists = db.Value |> Map.find u |> Map.add l.Name l
-        let updatedDb = db.Value |> Map.add u updatedLists
-        db.Value <- updatedDb
-
-let writeEvent (store: ListEvent list ref) : EventWriter =
-    fun e -> store.Value <- e :: store.Value
+let writeEvent (store: InMemoryEventStore) : EventWriter<ListName, ListEvent> =
+    fun e -> store.Value <- Seq.append store.Value [ e ]
 
 [<EntryPoint>]
 let main _ =
     Host
         .CreateDefaultBuilder()
         .ConfigureWebHostDefaults(
-            ZettaiHost.configure (mapLookup db) (mapWrite db) (writeEvent store)
+            ZettaiHost.configure (streamLookup store) (writeEvent store)
             >> ignore
         )
         .Build()
