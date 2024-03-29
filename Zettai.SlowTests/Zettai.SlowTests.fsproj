@@ -6,8 +6,11 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Include="requests.http" />
     <Compile Include="AcceptanceTests.fs" />
   </ItemGroup>
+
+  <ItemGroup />
 
   <ItemGroup>
     <PackageReference Include="FSharp.SystemTextJson" Version="1.2.42" />

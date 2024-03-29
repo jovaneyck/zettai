@@ -1,0 +1,11 @@
+﻿//For more information on how to use .http files, take a look at:
+//https://learn.microsoft.com/en-us/aspnet/core/test/http-files?view=aspnetcore-8.0
+
+@base_url = https://localhost:7082
+
+GET {{base_url}}/
+
+###
+
+GET {{base_url}}/todo/jo/books
+Accept: application/json
