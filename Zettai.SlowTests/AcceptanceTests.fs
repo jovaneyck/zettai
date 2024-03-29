@@ -24,6 +24,7 @@ module AcceptanceTests =
         )
 
     let createClient (ts: TestServer) = ts.CreateClient()
+    let buildClient = buildApp >> createClient
 
     let get (path: string) (client: System.Net.Http.HttpClient) =
         let response = (client.GetAsync path).Result
@@ -41,7 +42,7 @@ module AcceptanceTests =
 
     [<Fact>]
     let ``App bootstraps`` () =
-        use client = [] |> buildApp |> createClient
+        use client = [] |> buildClient
 
         let response = client |> get "/"
 
@@ -50,7 +51,7 @@ module AcceptanceTests =
 
     [<Fact>]
     let ``404 on unknown url's`` () =
-        use client = [] |> buildApp |> createClient
+        use client = [] |> buildClient
 
         let response = client |> get "/invalid-url"
 
@@ -62,10 +63,7 @@ module AcceptanceTests =
             { Name = ListName "pets"
               Items = [ { Description = "nestor" } ] }
 
-        use client =
-            [ User "jo", [ petList ] ]
-            |> buildApp
-            |> createClient
+        use client = [ User "jo", [ petList ] ] |> buildClient
 
         let parsed = client |> getJson<ToDoList> "/todo/jo/pets"
 
@@ -75,8 +73,7 @@ module AcceptanceTests =
     let ``Add item to existing list`` () =
         use client =
             [ User "jo", [ { Name = ListName "pets"; Items = [] } ] ]
-            |> buildApp
-            |> createClient
+            |> buildClient
 
         let response =
             client
