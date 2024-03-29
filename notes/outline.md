@@ -11,7 +11,7 @@ Based on the contents of [From objects to functions](https://pragprog.com/titles
 2. Hello world! Building a walking skeleton (functional web server, acceptance tests)
 3. Our first story: showing lists for a user
 3. Our second story: adding items to an existing list. 
- * Modeling the domain with types: make illegal state unrepresentable: item states (todo, doing, done), listname invariants
+ * Modeling the domain with types: make illegal state unrepresentable: user and listname invariants
 4. Event sourcing: commands change state, events to represent changes
 5. Creating a new list. 
 6. Better error handling using Results. Hello fmap and functor!

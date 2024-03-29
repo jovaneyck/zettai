@@ -9,4 +9,4 @@ type ToDoList =
       Items: ToDoItem list }
 
 type ListLookup = User -> ListName -> ToDoList
-type ListWrite = ToDoList -> unit
+type ListWrite = User -> ToDoList -> unit

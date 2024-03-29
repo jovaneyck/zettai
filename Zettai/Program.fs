@@ -3,36 +3,31 @@ module Program
 open Microsoft.Extensions.Hosting
 open Types
 
-type Database = Map<User, ToDoList list> ref
+type Database = Map<User, Map<ListName, ToDoList>> ref
 
 let db: Database =
     [ User "jo",
-      [ { Name = ListName "books"
-          Items =
-            [ { Description = "Tidy First?" }
-              { Description = "Team Topologies" } ] } ] ]
+      [ (ListName "books",
+         { Name = ListName "books"
+           Items =
+             [ { Description = "Tidy First?" }
+               { Description = "Team Topologies" } ] }) ]
+      |> Map.ofList ]
     |> Map.ofList
     |> ref
 
 let mapLookup (db: Database) : ListLookup =
     fun u l ->
         let listsForUser = db.Value |> Map.find u
-
-        let list =
-            listsForUser
-            |> List.find (fun lfu -> lfu.Name = l)
+        let list = listsForUser |> Map.find l
 
         list
 
 let mapWrite (db: Database) : ListWrite =
-    fun l ->
-        let updated =
-            db.Value
-            |> Map.map (fun _ ls ->
-                ls
-                |> List.map (fun ll -> if ll.Name = l.Name then l else ll))
-
-        db.Value <- updated
+    fun u l ->
+        let updatedLists = db.Value |> Map.find u |> Map.add l.Name l
+        let updatedDb = db.Value |> Map.add u updatedLists
+        db.Value <- updatedDb
 
 [<EntryPoint>]
 let main _ =

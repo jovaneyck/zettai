@@ -1,4 +1,4 @@
-﻿namespace Zettai.SlowTests
+﻿namespace Zettai.Tests
 
 open Xunit
 open Swensen.Unquote
@@ -16,7 +16,11 @@ module AcceptanceTests =
         JsonSerializer.Serialize<'a>(thing, ZettaiHost.serializationOptions)
 
     let buildApp db =
-        let rdb = db |> Map.ofList |> ref
+        let rdb =
+            db
+            |> Map.ofList
+            |> Map.map (fun _ v -> v |> List.map (fun l -> l.Name, l) |> Map.ofList)
+            |> ref
 
         new Microsoft.AspNetCore.TestHost.TestServer(
             new WebHostBuilder()
@@ -35,7 +39,12 @@ module AcceptanceTests =
         let parsed = deserialize<'a> (response.Content.ReadAsStream())
         parsed
 
-    let post (path: string) (payload: 'a) (client: System.Net.Http.HttpClient) =
+    let post (path: string) (client: System.Net.Http.HttpClient) =
+        let body = new System.Net.Http.StringContent("{}")
+        let response = (client.PostAsync(path, body)).Result
+        response
+
+    let postJson (path: string) (payload: 'a) (client: System.Net.Http.HttpClient) =
         let body = new System.Net.Http.StringContent(serialize payload)
         let response = (client.PostAsync(path, body)).Result
         response
@@ -77,7 +86,7 @@ module AcceptanceTests =
 
         let response =
             client
-            |> post "/todo/jo/pets" { Description = "nestor" }
+            |> postJson "/todo/jo/pets/item" { Description = "nestor" }
 
         test <@ response.IsSuccessStatusCode @>
 
@@ -86,3 +95,15 @@ module AcceptanceTests =
         test
             <@ response = { Name = ListName "pets"
                             Items = [ { Description = "nestor" } ] } @>
+
+    [<Fact>]
+    let ``Add a new empty list`` () =
+        use client = [ User "jo", [] ] |> buildClient
+
+        let response = client |> post "/todo/jo/pets"
+
+        test <@ response.StatusCode = System.Net.HttpStatusCode.Created @>
+
+        let response = client |> getJson<ToDoList> "/todo/jo/pets"
+
+        test <@ response = { Name = ListName "pets"; Items = [] } @>

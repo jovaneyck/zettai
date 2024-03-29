@@ -13,22 +13,32 @@ let showList (lookup: ListLookup) =
         let list = lookup (User userName) (ListName listName)
         json list
 
+let addList (write: ListWrite) =
+    fun (userName, listName) ->
+        let user = User userName
+
+        let newList = { Name = ListName listName; Items = [] }
+
+        write user newList
+
+        setStatusCode ((int) System.Net.HttpStatusCode.Created)
 
 let addItem (lookup: ListLookup) (write: ListWrite) =
     fun (userName, listName) (next: HttpFunc) (ctx: HttpContext) ->
         let newItem = ctx.BindJsonAsync<ToDoItem>().Result
-
-        let list = lookup (User userName) (ListName listName)
+        let user = User userName
+        let list = lookup user (ListName listName)
         let updated = { list with Items = newItem :: list.Items }
-        updated |> write
+        write user updated
 
         setStatusCode ((int) System.Net.HttpStatusCode.OK) next ctx
 
 let webApp (lookup: ListLookup) (write: ListWrite) =
     choose [ GET >=> route "/" >=> text "Hello world!"
              GET >=> routef "/todo/%s/%s" (showList lookup)
+             POST >=> routef "/todo/%s/%s" (addList write)
              POST
-             >=> routef "/todo/%s/%s" (addItem lookup write)
+             >=> routef "/todo/%s/%s/item" (addItem lookup write)
              RequestErrors.NOT_FOUND "Not Found" ]
 
 let configureApp (lookup: ListLookup) (write: ListWrite) (app: IApplicationBuilder) =
