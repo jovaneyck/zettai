@@ -3,17 +3,20 @@ module Program
 open Microsoft.Extensions.Hosting
 open Types
 
-let db =
+type Database = Map<User, ToDoList list>
+
+let db: Database ref =
     [ User "jo",
       [ { Name = ListName "books"
           Items =
             [ { Description = "Tidy First?" }
               { Description = "Team Topologies" } ] } ] ]
     |> Map.ofList
+    |> ref
 
-let mapLookup: ListLookup =
+let mapLookup (db: Database ref) : ListLookup =
     fun u l ->
-        let listsForUser = db |> Map.find u
+        let listsForUser = db.Value |> Map.find u
 
         let list =
             listsForUser
@@ -21,12 +24,24 @@ let mapLookup: ListLookup =
 
         list
 
+let mapWrite (db: Database ref) : ListWrite =
+    fun l ->
+        let updated =
+            db.Value
+            |> Map.map (fun _ ls ->
+                ls
+                |> List.map (fun ll -> if ll.Name = l.Name then l else ll))
+
+        db.Value <- updated
 
 [<EntryPoint>]
 let main _ =
     Host
         .CreateDefaultBuilder()
-        .ConfigureWebHostDefaults(ZettaiHost.configure mapLookup >> ignore)
+        .ConfigureWebHostDefaults(
+            ZettaiHost.configure (mapLookup db) (mapWrite db)
+            >> ignore
+        )
         .Build()
         .Run()
 

@@ -14,22 +14,20 @@ module AcceptanceTests =
     let deserialize<'a> (stream: System.IO.Stream) =
         JsonSerializer.Deserialize<'a>(stream, ZettaiHost.serializationOptions)
 
-    let lookupList db u l =
-        db
-        |> Map.find u
-        |> List.find (fun ll -> ll.Name = l)
+    let serialize (thing: 'a) =
+        JsonSerializer.Serialize<'a>(thing, ZettaiHost.serializationOptions)
 
     let buildApp db =
         new Microsoft.AspNetCore.TestHost.TestServer(
             new WebHostBuilder()
-            |> ZettaiHost.configure (lookupList db)
+            |> ZettaiHost.configure (Program.mapLookup db) (Program.mapWrite db)
         )
 
     let createClient (ts: TestServer) = ts.CreateClient()
 
     [<Fact>]
     let ``App bootstraps`` () =
-        use client = Map.empty |> buildApp |> createClient
+        use client = Map.empty |> ref |> buildApp |> createClient
 
         let response = (client.GetAsync "/").Result
 
@@ -38,7 +36,7 @@ module AcceptanceTests =
 
     [<Fact>]
     let ``404 on unknown url's`` () =
-        use client = Map.empty |> buildApp |> createClient
+        use client = Map.empty |> ref |> buildApp |> createClient
 
         let response = (client.GetAsync "/invalid-url").Result
 
@@ -50,7 +48,7 @@ module AcceptanceTests =
             { Name = ListName "pets"
               Items = [ { Description = "nestor" } ] }
 
-        let data = [ User "jo", [ petList ] ] |> Map.ofList
+        let data = [ User "jo", [ petList ] ] |> Map.ofList |> ref
 
         use client = data |> buildApp |> createClient
 
@@ -59,3 +57,28 @@ module AcceptanceTests =
         test <@ response.IsSuccessStatusCode @>
         let parsed = deserialize<ToDoList> (response.Content.ReadAsStream())
         test <@ parsed = petList @>
+
+    [<Fact>]
+    let ``Add item to existing list`` () =
+
+        let data =
+            [ User "jo", [ { Name = ListName "pets"; Items = [] } ] ]
+            |> Map.ofList
+            |> ref
+
+        use client = data |> buildApp |> createClient
+
+        let body = new System.Net.Http.StringContent(serialize { Description = "nestor" })
+
+        let response = (client.PostAsync("/todo/jo/pets", body)).Result
+
+        test <@ response.IsSuccessStatusCode @>
+
+        let response = (client.GetAsync "/todo/jo/pets").Result
+
+        test <@ response.IsSuccessStatusCode @>
+        let parsed = deserialize<ToDoList> (response.Content.ReadAsStream())
+
+        test
+            <@ parsed = { Name = ListName "pets"
+                          Items = [ { Description = "nestor" } ] } @>

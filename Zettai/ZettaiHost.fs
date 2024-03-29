@@ -13,17 +13,35 @@ let showList (lookup: ListLookup) =
         let list = lookup (User userName) (ListName listName)
         json list
 
-let webApp (lookup: ListLookup) =
+
+let addItem (lookup: ListLookup) (write: ListWrite) =
+    fun (userName, listName) (next: HttpFunc) (ctx: HttpContext) ->
+        let newItem = ctx.BindJsonAsync<ToDoItem>().Result
+
+        let list = lookup (User userName) (ListName listName)
+        let updated = { list with Items = newItem :: list.Items }
+        updated |> write
+
+        setStatusCode ((int) System.Net.HttpStatusCode.OK) next ctx
+
+let webApp (lookup: ListLookup) (write: ListWrite) =
     choose [ GET >=> route "/" >=> text "Hello world!"
              GET >=> routef "/todo/%s/%s" (showList lookup)
+             POST
+             >=> routef "/todo/%s/%s" (addItem lookup write)
              RequestErrors.NOT_FOUND "Not Found" ]
 
-let configureApp (lookup: ListLookup) (app: IApplicationBuilder) = app.UseGiraffe(webApp lookup)
+let configureApp (lookup: ListLookup) (write: ListWrite) (app: IApplicationBuilder) =
+    app.UseGiraffe(webApp lookup write)
 
 let serializationOptions =
-    JsonFSharpOptions
-        .Default()
-        .ToJsonSerializerOptions()
+    let o =
+        JsonFSharpOptions
+            .Default()
+            .ToJsonSerializerOptions()
+
+    o.PropertyNameCaseInsensitive <- true
+    o
 
 let configureServices (services: IServiceCollection) =
     services
@@ -31,7 +49,7 @@ let configureServices (services: IServiceCollection) =
         .AddSingleton<Json.ISerializer>(SystemTextJson.Serializer(serializationOptions))
     |> ignore
 
-let configure (lookup: ListLookup) (whb: IWebHostBuilder) =
+let configure (lookup: ListLookup) (write: ListWrite) (whb: IWebHostBuilder) =
     whb
-        .Configure((configureApp lookup))
+        .Configure((configureApp lookup write))
         .ConfigureServices(configureServices)
