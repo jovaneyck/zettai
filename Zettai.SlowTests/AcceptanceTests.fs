@@ -3,12 +3,10 @@
 open Xunit
 open Swensen.Unquote
 open Microsoft.AspNetCore.Hosting
-open Microsoft.Extensions.DependencyInjection
+open Microsoft.AspNetCore.TestHost
 open System.Text.Json
-open System.Text.Json.Serialization
 
 open Types
-open Microsoft.AspNetCore.TestHost
 
 type Database = Map<User, ToDoList list>
 

@@ -1,12 +1,12 @@
 ﻿module ZettaiHost
 
+open Giraffe
 open Microsoft.AspNetCore.Builder
 open Microsoft.AspNetCore.Hosting
-open Microsoft.Extensions.DependencyInjection
-open Giraffe
-open Types
 open Microsoft.AspNetCore.Http
+open Microsoft.Extensions.DependencyInjection
 open System.Text.Json.Serialization
+open Types
 
 let showList (lookup: ListLookup) =
     fun (userName, listName) ->

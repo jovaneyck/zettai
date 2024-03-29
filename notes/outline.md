@@ -1,24 +1,25 @@
-# Building a fully functional web API
+# Building a fully functional F# web API
 
 Based on the contents of [From objects to functions](https://pragprog.com/titles/uboop/from-objects-to-functions/) by Uberto Barbini.
 
-* Series introduction: what will we build and how will we build it?
+1. Series introduction: what will we build and how will we build it?
     * Zettai, a TODO list manager for multiple users
-    * web API
+    * We'll build the web API
     * In a functional language, with functional libraries and idioms
-    * Persistence
-    * No: security, CICD
-* Hello world! Building a walking skeleton (functional web server, acceptance tests)
-* Our first story: modify a list with outside-in TDD. Modeling the domain with types.
-* Event sourcing: commands change state, events to represent changes
-* Creating a new list. 
-* Better error handling using Results. Hello fmap and functor!
-* Representing the current state: projections
-* Adding persistence: reader monad
-* Combining error handling and database access: monad transformers
-* Input validation: applicatives
+    * Using outside-in TDD
+    * We will be incorporating persistence, but will leave other functional aspects as an exercise
+2. Hello world! Building a walking skeleton (functional web server, acceptance tests)
+3. Our first story: showing lists for a user
+3. Our second story: modify a list. Modeling the domain with types.
+4. Event sourcing: commands change state, events to represent changes
+5. Creating a new list. 
+6. Better error handling using Results. Hello fmap and functor!
+7. Representing the current state: projections
+8. Adding persistence: reader monad
+9. Combining error handling and database access: monad transformers
+10. Input validation: applicatives
 
-# Add-ons
+## Add-ons
 
 * Persisting projections
-* Integrating with dotnet libraries: logging and JSON serde
+* Integrating with "non-functional" dotnet libraries: security, logging and JSON serde
