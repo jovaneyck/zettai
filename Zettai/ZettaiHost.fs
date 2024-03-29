@@ -8,16 +8,13 @@ open Types
 open Microsoft.AspNetCore.Http
 open System.Text.Json.Serialization
 
-let helloWorld: HttpHandler = text "Hello world!"
-
 let showList (lookup: ListLookup) =
-    fun (userName, listName) (next: HttpFunc) ->
+    fun (userName, listName) ->
         let list = lookup (User userName) (ListName listName)
-
-        json list next
+        json list
 
 let webApp (lookup: ListLookup) =
-    choose [ GET >=> route "/" >=> helloWorld
+    choose [ GET >=> route "/" >=> text "Hello world!"
              GET >=> routef "/todo/%s/%s" (showList lookup)
              RequestErrors.NOT_FOUND "Not Found" ]
 

@@ -39,6 +39,14 @@ module AcceptanceTests =
         test <@ response.Content.ReadAsStringAsync().Result = "Hello world!" @>
 
     [<Fact>]
+    let ``404 on unknown url's`` () =
+        use client = Map.empty |> buildApp |> createClient
+
+        let response = (client.GetAsync "/invalid-url").Result
+
+        test <@ response.StatusCode = System.Net.HttpStatusCode.NotFound @>
+
+    [<Fact>]
     let ``Renders lists for a user`` () =
         let petList =
             { Name = ListName "pets"
