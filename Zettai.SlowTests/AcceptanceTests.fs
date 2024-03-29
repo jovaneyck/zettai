@@ -8,8 +8,6 @@ open System.Text.Json
 
 open Types
 
-type Database = Map<User, ToDoList list>
-
 module AcceptanceTests =
     let deserialize<'a> (stream: System.IO.Stream) =
         JsonSerializer.Deserialize<'a>(stream, ZettaiHost.serializationOptions)
@@ -18,27 +16,43 @@ module AcceptanceTests =
         JsonSerializer.Serialize<'a>(thing, ZettaiHost.serializationOptions)
 
     let buildApp db =
+        let rdb = db |> Map.ofList |> ref
+
         new Microsoft.AspNetCore.TestHost.TestServer(
             new WebHostBuilder()
-            |> ZettaiHost.configure (Program.mapLookup db) (Program.mapWrite db)
+            |> ZettaiHost.configure (Program.mapLookup rdb) (Program.mapWrite rdb)
         )
 
     let createClient (ts: TestServer) = ts.CreateClient()
 
+    let get (path: string) (client: System.Net.Http.HttpClient) =
+        let response = (client.GetAsync path).Result
+        response
+
+    let getJson<'a> (path: string) (client: System.Net.Http.HttpClient) =
+        let response = (client.GetAsync path).Result
+        let parsed = deserialize<'a> (response.Content.ReadAsStream())
+        parsed
+
+    let post (path: string) (payload: 'a) (client: System.Net.Http.HttpClient) =
+        let body = new System.Net.Http.StringContent(serialize payload)
+        let response = (client.PostAsync(path, body)).Result
+        response
+
     [<Fact>]
     let ``App bootstraps`` () =
-        use client = Map.empty |> ref |> buildApp |> createClient
+        use client = [] |> buildApp |> createClient
 
-        let response = (client.GetAsync "/").Result
+        let response = client |> get "/"
 
         test <@ response.IsSuccessStatusCode @>
         test <@ response.Content.ReadAsStringAsync().Result = "Hello world!" @>
 
     [<Fact>]
     let ``404 on unknown url's`` () =
-        use client = Map.empty |> ref |> buildApp |> createClient
+        use client = [] |> buildApp |> createClient
 
-        let response = (client.GetAsync "/invalid-url").Result
+        let response = client |> get "/invalid-url"
 
         test <@ response.StatusCode = System.Net.HttpStatusCode.NotFound @>
 
@@ -48,37 +62,30 @@ module AcceptanceTests =
             { Name = ListName "pets"
               Items = [ { Description = "nestor" } ] }
 
-        let data = [ User "jo", [ petList ] ] |> Map.ofList |> ref
+        use client =
+            [ User "jo", [ petList ] ]
+            |> buildApp
+            |> createClient
 
-        use client = data |> buildApp |> createClient
+        let parsed = client |> getJson<ToDoList> "/todo/jo/pets"
 
-        let response = (client.GetAsync "/todo/jo/pets").Result
-
-        test <@ response.IsSuccessStatusCode @>
-        let parsed = deserialize<ToDoList> (response.Content.ReadAsStream())
         test <@ parsed = petList @>
 
     [<Fact>]
     let ``Add item to existing list`` () =
-
-        let data =
+        use client =
             [ User "jo", [ { Name = ListName "pets"; Items = [] } ] ]
-            |> Map.ofList
-            |> ref
+            |> buildApp
+            |> createClient
 
-        use client = data |> buildApp |> createClient
-
-        let body = new System.Net.Http.StringContent(serialize { Description = "nestor" })
-
-        let response = (client.PostAsync("/todo/jo/pets", body)).Result
+        let response =
+            client
+            |> post "/todo/jo/pets" { Description = "nestor" }
 
         test <@ response.IsSuccessStatusCode @>
 
-        let response = (client.GetAsync "/todo/jo/pets").Result
-
-        test <@ response.IsSuccessStatusCode @>
-        let parsed = deserialize<ToDoList> (response.Content.ReadAsStream())
+        let response = client |> getJson<ToDoList> "/todo/jo/pets"
 
         test
-            <@ parsed = { Name = ListName "pets"
-                          Items = [ { Description = "nestor" } ] } @>
+            <@ response = { Name = ListName "pets"
+                            Items = [ { Description = "nestor" } ] } @>

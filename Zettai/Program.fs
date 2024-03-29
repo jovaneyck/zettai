@@ -3,9 +3,9 @@ module Program
 open Microsoft.Extensions.Hosting
 open Types
 
-type Database = Map<User, ToDoList list>
+type Database = Map<User, ToDoList list> ref
 
-let db: Database ref =
+let db: Database =
     [ User "jo",
       [ { Name = ListName "books"
           Items =
@@ -14,7 +14,7 @@ let db: Database ref =
     |> Map.ofList
     |> ref
 
-let mapLookup (db: Database ref) : ListLookup =
+let mapLookup (db: Database) : ListLookup =
     fun u l ->
         let listsForUser = db.Value |> Map.find u
 
@@ -24,7 +24,7 @@ let mapLookup (db: Database ref) : ListLookup =
 
         list
 
-let mapWrite (db: Database ref) : ListWrite =
+let mapWrite (db: Database) : ListWrite =
     fun l ->
         let updated =
             db.Value
