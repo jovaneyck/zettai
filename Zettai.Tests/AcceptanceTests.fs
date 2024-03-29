@@ -22,9 +22,11 @@ module AcceptanceTests =
             |> Map.map (fun _ v -> v |> List.map (fun l -> l.Name, l) |> Map.ofList)
             |> ref
 
+        let store: ListEvent list ref = [] |> ref
+
         new Microsoft.AspNetCore.TestHost.TestServer(
             new WebHostBuilder()
-            |> ZettaiHost.configure (Program.mapLookup rdb) (Program.mapWrite rdb)
+            |> ZettaiHost.configure (Program.mapLookup rdb) (Program.mapWrite rdb) (Program.writeEvent store)
         )
 
     let createClient (ts: TestServer) = ts.CreateClient()

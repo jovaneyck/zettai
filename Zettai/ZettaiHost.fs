@@ -13,15 +13,14 @@ let showList (lookup: ListLookup) =
         let list = lookup (User userName) (ListName.fromUntrusted listName)
         json list
 
-let addList (write: ListWrite) =
+let addList (handler: CommandHandler) (eventWriter: EventWriter) =
     fun (userName, listName) ->
-        let user = User userName
-
         try
+            let user = User userName
             let name = ListName.fromUntrusted listName
-            let newList = { Name = name; Items = [] }
 
-            write user newList
+            let cmd = CreateList { User = user; List = name }
+            handler cmd |> List.iter eventWriter
 
             setStatusCode ((int) System.Net.HttpStatusCode.Created)
         with
@@ -29,26 +28,33 @@ let addList (write: ListWrite) =
             setStatusCode ((int) System.Net.HttpStatusCode.BadRequest)
             >=> text (sprintf "list name %s" msg)
 
-let addItem (lookup: ListLookup) (write: ListWrite) =
+let addItem (handler: CommandHandler) (eventWriter: EventWriter) =
     fun (userName, listName) (next: HttpFunc) (ctx: HttpContext) ->
-        let newItem = ctx.BindJsonAsync<ToDoItem>().Result
+        let newItem = ctx.BindJsonAsync<ItemData>().Result
         let user = User userName
-        let list = lookup user (ListName.fromUntrusted listName)
-        let updated = { list with Items = newItem :: list.Items }
-        write user updated
+        let listName = ListName.fromUntrusted listName
+
+        let cmd =
+            AddItemToList
+                { User = user
+                  List = listName
+                  Item = newItem }
+
+        handler cmd |> List.iter eventWriter
 
         setStatusCode ((int) System.Net.HttpStatusCode.OK) next ctx
 
-let webApp (lookup: ListLookup) (write: ListWrite) =
+let webApp (lookup: ListLookup) (write: ListWrite) (writeEvent: EventWriter) =
     choose [ GET >=> route "/" >=> text "Hello world!"
              GET >=> routef "/todo/%s/%s" (showList lookup)
-             POST >=> routef "/todo/%s/%s" (addList write)
              POST
-             >=> routef "/todo/%s/%s/item" (addItem lookup write)
+             >=> routef "/todo/%s/%s" (addList (Types.handleCommand lookup write) writeEvent)
+             POST
+             >=> routef "/todo/%s/%s/item" (addItem (Types.handleCommand lookup write) writeEvent)
              RequestErrors.NOT_FOUND "Not Found" ]
 
-let configureApp (lookup: ListLookup) (write: ListWrite) (app: IApplicationBuilder) =
-    app.UseGiraffe(webApp lookup write)
+let configureApp (lookup: ListLookup) (write: ListWrite) (eventWriter: EventWriter) (app: IApplicationBuilder) =
+    app.UseGiraffe(webApp lookup write eventWriter)
 
 let serializationOptions =
     let o =
@@ -65,7 +71,7 @@ let configureServices (services: IServiceCollection) =
         .AddSingleton<Json.ISerializer>(SystemTextJson.Serializer(serializationOptions))
     |> ignore
 
-let configure (lookup: ListLookup) (write: ListWrite) (whb: IWebHostBuilder) =
+let configure (lookup: ListLookup) (write: ListWrite) (eventWriter: EventWriter) (whb: IWebHostBuilder) =
     whb
-        .Configure((configureApp lookup write))
+        .Configure((configureApp lookup write eventWriter))
         .ConfigureServices(configureServices)

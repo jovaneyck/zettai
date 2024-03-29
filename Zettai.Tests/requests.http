@@ -10,7 +10,7 @@ GET {{base_url}}/404
 GET {{base_url}}/todo/jo/books
 Accept: application/json
 ###
-POST {{base_url}}/todo/jo/new-list
+POST {{base_url}}/todo/jo/new-list-{{$randomInt}}
 ###
 GET {{base_url}}/todo/jo/new-list
 ###

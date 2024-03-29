@@ -4,6 +4,7 @@ open Microsoft.Extensions.Hosting
 open Types
 
 type Database = Map<User, Map<ListName, ToDoList>> ref
+let store = ref []
 
 let db: Database =
     [ User "jo",
@@ -29,12 +30,15 @@ let mapWrite (db: Database) : ListWrite =
         let updatedDb = db.Value |> Map.add u updatedLists
         db.Value <- updatedDb
 
+let writeEvent (store: ListEvent list ref) : EventWriter =
+    fun e -> store.Value <- e :: store.Value
+
 [<EntryPoint>]
 let main _ =
     Host
         .CreateDefaultBuilder()
         .ConfigureWebHostDefaults(
-            ZettaiHost.configure (mapLookup db) (mapWrite db)
+            ZettaiHost.configure (mapLookup db) (mapWrite db) (writeEvent store)
             >> ignore
         )
         .Build()
