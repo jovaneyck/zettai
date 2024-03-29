@@ -10,37 +10,18 @@ open System.Text.Json.Serialization
 
 let helloWorld: HttpHandler = text "Hello world!"
 
-let db =
-    [ User "jo",
-      [ { Name = ListName "books"
-          Items =
-            [ { Description = "Tidy First?" }
-              { Description = "Team Topologies" } ] } ] ]
-    |> Map.ofList
-
-let mapLookup: ListLookup =
-    fun u l ->
-        let listsForUser = db |> Map.find u
-
-        let list =
-            listsForUser
-            |> List.find (fun lfu -> lfu.Name = l)
-
-        list
-
-let showList =
-    fun (userName, listName) (next: HttpFunc) (ctx: HttpContext) ->
-        let lookup = ctx.GetService<ListLookup>()
+let showList (lookup: ListLookup) =
+    fun (userName, listName) (next: HttpFunc) ->
         let list = lookup (User userName) (ListName listName)
 
-        json list next ctx
+        json list next
 
-let webApp =
+let webApp (lookup: ListLookup) =
     choose [ GET >=> route "/" >=> helloWorld
-             GET >=> routef "/todo/%s/%s" showList
+             GET >=> routef "/todo/%s/%s" (showList lookup)
              RequestErrors.NOT_FOUND "Not Found" ]
 
-let configureApp (app: IApplicationBuilder) = app.UseGiraffe webApp
+let configureApp (lookup: ListLookup) (app: IApplicationBuilder) = app.UseGiraffe(webApp lookup)
 
 let serializationOptions =
     JsonFSharpOptions
@@ -51,10 +32,9 @@ let configureServices (services: IServiceCollection) =
     services
         .AddGiraffe()
         .AddSingleton<Json.ISerializer>(SystemTextJson.Serializer(serializationOptions))
-        .AddSingleton<ListLookup>(mapLookup)
     |> ignore
 
-let configure (whb: IWebHostBuilder) =
+let configure (lookup: ListLookup) (whb: IWebHostBuilder) =
     whb
-        .Configure(configureApp)
+        .Configure((configureApp lookup))
         .ConfigureServices(configureServices)
