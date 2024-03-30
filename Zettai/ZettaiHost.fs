@@ -6,7 +6,6 @@ open Microsoft.AspNetCore.Hosting
 open Microsoft.AspNetCore.Http
 open Microsoft.Extensions.DependencyInjection
 open System.Text.Json.Serialization
-open Infrastructure
 open Domain
 
 let showList (lookup: ListLookup) =
@@ -14,14 +13,14 @@ let showList (lookup: ListLookup) =
         let list = lookup (User userName) (ListName.fromUntrusted listName)
         json list
 
-let addList (handler: CommandHandler<ListId, ListCommand, ListEvent>) (eventWriter: EventWriter<ListId, ListEvent>) =
+let addList handler =
     fun (userName, listName) ->
         try
             let user = User userName
             let name = ListName.fromUntrusted listName
 
             let cmd = CreateList { User = user; List = name }
-            handler cmd |> List.iter eventWriter
+            handler cmd
 
             setStatusCode ((int) System.Net.HttpStatusCode.Created)
         with
@@ -29,7 +28,7 @@ let addList (handler: CommandHandler<ListId, ListCommand, ListEvent>) (eventWrit
             setStatusCode ((int) System.Net.HttpStatusCode.BadRequest)
             >=> text (sprintf "list name %s" msg)
 
-let addItem handler eventWriter =
+let addItem handler =
     fun (userName, listName) (next: HttpFunc) (ctx: HttpContext) ->
         let newItem = ctx.BindJsonAsync<ItemData>().Result
         let user = User userName
@@ -41,20 +40,21 @@ let addItem handler eventWriter =
                   List = listName
                   Item = newItem }
 
-        handler cmd |> List.iter eventWriter
+        handler cmd
+        next ctx
 
-        setStatusCode ((int) System.Net.HttpStatusCode.OK) next ctx
+let webApp lookup writeEvent =
+    let handler cmd =
+        (handleCommand lookup) cmd |> List.iter writeEvent
 
-let webApp (lookup: ListLookup) writeEvent =
     choose [ GET >=> route "/" >=> text "Hello world!"
              GET >=> routef "/todo/%s/%s" (showList lookup)
+             POST >=> routef "/todo/%s/%s" (addList handler)
              POST
-             >=> routef "/todo/%s/%s" (addList (handleCommand lookup) writeEvent)
-             POST
-             >=> routef "/todo/%s/%s/item" (addItem (handleCommand lookup) writeEvent)
+             >=> routef "/todo/%s/%s/item" (addItem handler)
              RequestErrors.NOT_FOUND "Not Found" ]
 
-let configureApp (lookup: ListLookup) eventWriter (app: IApplicationBuilder) =
+let configureApp lookup eventWriter (app: IApplicationBuilder) =
     app.UseGiraffe(webApp lookup eventWriter)
 
 let serializationOptions =
@@ -72,7 +72,7 @@ let configureServices (services: IServiceCollection) =
         .AddSingleton<Json.ISerializer>(SystemTextJson.Serializer(serializationOptions))
     |> ignore
 
-let configure (lookup: ListLookup) eventWriter (whb: IWebHostBuilder) =
+let configure lookup eventWriter (whb: IWebHostBuilder) =
     whb
         .Configure((configureApp lookup eventWriter))
         .ConfigureServices(configureServices)

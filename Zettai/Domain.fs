@@ -37,6 +37,7 @@ module ToDoList =
 type ListLookup = User -> ListName -> ToDoList
 
 type CreateListData = { User: User; List: ListName }
+
 type ItemData = { Description: string }
 
 type AddItemToListData =
@@ -49,7 +50,6 @@ type ListCommand =
     | AddItemToList of AddItemToListData
 
 type ListCreatedData = { User: User; ListName: ListName }
-
 type ItemAddedToListData = { Item: ItemData }
 
 type ListEvent =
