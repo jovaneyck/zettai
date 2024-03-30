@@ -19,7 +19,7 @@ let store: InMemoryEventStore =
     |> Seq.ofList
     |> ref
 
-let streamLookupIdByName (store: InMemoryEventStore) =
+let lookupIdByName (store: InMemoryEventStore) =
     fun u ln ->
         store.Value
         |> Seq.pick (fun e ->
@@ -31,23 +31,22 @@ let streamLookupIdByName (store: InMemoryEventStore) =
                     None
             | _ -> None)
 
-let streamLookup (store: InMemoryEventStore) : ListLookup =
-    fun u ln ->
-        let id = streamLookupIdByName store u ln
+let lookupByName (store: InMemoryEventStore) u ln =
+    let id = lookupIdByName store u ln
 
-        store.Value
-        |> Seq.filter (fun e -> e.AggregateId = id)
-        |> ListEvent.fold (ToDoList.initial id ln)
+    store.Value
+    |> Seq.filter (fun e -> e.AggregateId = id)
+    |> ListEvent.fold (ToDoList.initial id ln)
 
-let writeEvent (store: InMemoryEventStore) : EventWriter<ListId, ListEvent> =
-    fun e -> store.Value <- Seq.append store.Value [ e ]
+let writeEvent (store: InMemoryEventStore) e =
+    store.Value <- Seq.append store.Value [ e ]
 
 [<EntryPoint>]
 let main _ =
     Host
         .CreateDefaultBuilder()
         .ConfigureWebHostDefaults(
-            ZettaiHost.configure (streamLookup store) (writeEvent store)
+            ZettaiHost.configure (lookupByName store) (writeEvent store)
             >> ignore
         )
         .Build()

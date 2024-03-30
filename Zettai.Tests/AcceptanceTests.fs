@@ -21,7 +21,7 @@ module AcceptanceTests =
 
         new Microsoft.AspNetCore.TestHost.TestServer(
             new WebHostBuilder()
-            |> ZettaiHost.configure (Program.streamLookup store) (Program.writeEvent store)
+            |> ZettaiHost.configure (Program.lookupByName store) (Program.writeEvent store)
         )
 
     let createClient (ts: TestServer) = ts.CreateClient()
