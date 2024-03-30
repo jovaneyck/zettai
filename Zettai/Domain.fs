@@ -1,13 +1,16 @@
 ﻿module Domain
 
-type Event<'tid, 'tdata> = { AggregateId: 'tid; Data: 'tdata }
-type CommandHandler<'tid, 'tcmd, 'tevent> = 'tcmd -> Event<'tid, 'tevent> list
-type EventStream<'tid, 'tevent> = 'tid -> 'tevent seq
-type EventWriter<'tid, 'tevent> = Event<'tid, 'tevent> -> unit
+open Infrastructure
 
 exception ValidationException of string
 
 type User = User of string
+
+type ListId = ListId of System.Guid
+
+module ListId =
+    let mint () = System.Guid.NewGuid() |> ListId
+
 type ListName = private ListName of string
 
 module ListName =
@@ -23,12 +26,13 @@ module ListName =
 type ToDoItem = { Description: string }
 
 type ToDoList =
-    { Name: ListName
+    { Id: ListId
+      Name: ListName
       Items: ToDoItem list }
 
 [<AutoOpen>]
 module ToDoList =
-    let initial name = { Name = name; Items = [] }
+    let initial id name = { Id = id; Name = name; Items = [] }
 
 type ListLookup = User -> ListName -> ToDoList
 
@@ -44,8 +48,9 @@ type ListCommand =
     | CreateList of CreateListData
     | AddItemToList of AddItemToListData
 
-type ListCreatedData = { User: User; List: ListName }
-type ItemAddedToListData = { List: ListName; Item: ItemData }
+type ListCreatedData = { User: User; ListName: ListName }
+
+type ItemAddedToListData = { Item: ItemData }
 
 type ListEvent =
     | ListCreated of ListCreatedData
@@ -54,25 +59,29 @@ type ListEvent =
 module ListEvent =
     let fold acc events =
         let folder list event =
-            match event with
-            | ListCreated c -> { Name = c.List; Items = [] }
+            match event.Data with
+            | ListCreated c ->
+                { Id = event.AggregateId
+                  Name = c.ListName
+                  Items = [] }
             | ItemAddedToList a -> { list with Items = { Description = a.Item.Description } :: list.Items }
 
         events |> Seq.fold folder acc
 
 let createList (cmd: CreateListData) =
-    [ { AggregateId = cmd.List
-        Data = ListCreated { User = cmd.User; List = cmd.List } } ]
+    let id = ListId.mint ()
 
-let addItemToList (cmd: AddItemToListData) =
-    [ { AggregateId = cmd.List
-        Data =
-          ItemAddedToList
-              { List = cmd.List
-                Item = { Description = cmd.Item.Description } } } ]
+    [ { AggregateId = id
+        Data = ListCreated { User = cmd.User; ListName = cmd.List } } ]
 
-let handleCommand (lookup: ListLookup) : CommandHandler<ListName, ListCommand, ListEvent> =
+let addItemToList (lookup: ListLookup) (cmd: AddItemToListData) =
+    let list = lookup cmd.User cmd.List
+
+    [ { AggregateId = list.Id
+        Data = ItemAddedToList { Item = { Description = cmd.Item.Description } } } ]
+
+let handleCommand (lookup: ListLookup) : CommandHandler<ListId, ListCommand, ListEvent> =
     fun cmd ->
         match cmd with
         | CreateList c -> createList c
-        | AddItemToList d -> addItemToList d
+        | AddItemToList d -> addItemToList lookup d

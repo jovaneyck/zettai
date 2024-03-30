@@ -10,9 +10,10 @@ GET {{base_url}}/404
 GET {{base_url}}/todo/jo/books
 Accept: application/json
 ###
-POST {{base_url}}/todo/jo/new-list-{{$randomInt}}
+@list_name = new-list-{{$randomInt}}
+POST {{base_url}}/todo/jo/{{list_name}}
 ###
-GET {{base_url}}/todo/jo/new-list
+GET {{base_url}}/todo/jo/{{list_name}}
 ###
 POST {{base_url}}/todo/jo/new-list-1234567890123456789012345678901234567890
 ###

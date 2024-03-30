@@ -6,6 +6,7 @@ open Microsoft.AspNetCore.Hosting
 open Microsoft.AspNetCore.Http
 open Microsoft.Extensions.DependencyInjection
 open System.Text.Json.Serialization
+open Infrastructure
 open Domain
 
 let showList (lookup: ListLookup) =
@@ -13,10 +14,7 @@ let showList (lookup: ListLookup) =
         let list = lookup (User userName) (ListName.fromUntrusted listName)
         json list
 
-let addList
-    (handler: CommandHandler<ListName, ListCommand, ListEvent>)
-    (eventWriter: EventWriter<ListName, ListEvent>)
-    =
+let addList (handler: CommandHandler<ListId, ListCommand, ListEvent>) (eventWriter: EventWriter<ListId, ListEvent>) =
     fun (userName, listName) ->
         try
             let user = User userName

@@ -6,6 +6,7 @@ open Microsoft.AspNetCore.Hosting
 open Microsoft.AspNetCore.TestHost
 open System.Text.Json
 
+open Infrastructure
 open Domain
 
 module AcceptanceTests =
@@ -64,35 +65,39 @@ module AcceptanceTests =
 
     [<Fact>]
     let ``Renders lists for a user`` () =
+        let listId = ListId.mint ()
         let listName = ListName.fromUntrusted "pets"
 
-        let petList =
-            { Name = ListName.fromTrusted "pets"
-              Items = [ { Description = "nestor" } ] }
-
         let events =
-            [ { AggregateId = listName
-                Data = ListCreated { User = User "jo"; List = listName } }
-              { AggregateId = listName
+            [ { AggregateId = listId
                 Data =
-                  ItemAddedToList
-                      { List = listName
-                        Item = { Description = "nestor" } } } ]
+                  ListCreated
+                      { User = User "jo"
+                        ListName = listName } }
+              { AggregateId = listId
+                Data = ItemAddedToList { Item = { Description = "nestor" } } } ]
 
         use client = buildClient events
 
         let parsed = client |> getJson<ToDoList> "/todo/jo/pets"
 
+        let petList =
+            { Id = listId
+              Name = ListName.fromTrusted "pets"
+              Items = [ { Description = "nestor" } ] }
+
         test <@ parsed = petList @>
 
     [<Fact>]
     let ``Add item to existing list`` () =
+        let listId = ListId.mint ()
+
         use client =
-            buildClient [ { AggregateId = ListName.fromTrusted "pets"
+            buildClient [ { AggregateId = listId
                             Data =
                               ListCreated
                                   { User = User "jo"
-                                    List = ListName.fromTrusted "pets" } } ]
+                                    ListName = ListName.fromTrusted "pets" } } ]
 
         let response =
             client
@@ -103,7 +108,8 @@ module AcceptanceTests =
         let response = client |> getJson<ToDoList> "/todo/jo/pets"
 
         test
-            <@ response = { Name = ListName.fromTrusted "pets"
+            <@ response = { Id = listId
+                            Name = ListName.fromTrusted "pets"
                             Items = [ { Description = "nestor" } ] } @>
 
     [<Fact>]
@@ -116,9 +122,8 @@ module AcceptanceTests =
 
         let response = client |> getJson<ToDoList> "/todo/jo/pets"
 
-        test
-            <@ response = { Name = ListName.fromTrusted "pets"
-                            Items = [] } @>
+        test <@ response.Name = ListName.fromTrusted "pets" @>
+        test <@ response.Items = [] @>
 
     [<Fact>]
     let ``Rejects invalid list names`` () =

@@ -1,20 +1,45 @@
 module Program
 
 open Microsoft.Extensions.Hosting
+open Infrastructure
 open Domain
 
-type Database = Map<User, Map<ListName, ToDoList>> ref
-type InMemoryEventStore = Event<ListName, ListEvent> seq ref
-let store: InMemoryEventStore = ref []
+type InMemoryEventStore = Event<ListId, ListEvent> seq ref
+
+let store: InMemoryEventStore =
+    let list = ListId.mint ()
+
+    [ { AggregateId = list
+        Data =
+          ListCreated
+              { User = User "jo"
+                ListName = ListName.fromTrusted "books" } }
+      { AggregateId = list
+        Data = ItemAddedToList { Item = { Description = "Tidy First?" } } } ]
+    |> Seq.ofList
+    |> ref
+
+let streamLookupIdByName (store: InMemoryEventStore) =
+    fun u ln ->
+        store.Value
+        |> Seq.pick (fun e ->
+            match e.Data with
+            | ListCreated c ->
+                if c.User = u && c.ListName = ln then
+                    Some e.AggregateId
+                else
+                    None
+            | _ -> None)
 
 let streamLookup (store: InMemoryEventStore) : ListLookup =
     fun u ln ->
-        store.Value
-        |> Seq.filter (fun e -> e.AggregateId = ln)
-        |> Seq.map (fun e -> e.Data)
-        |> ListEvent.fold (ToDoList.initial ln)
+        let id = streamLookupIdByName store u ln
 
-let writeEvent (store: InMemoryEventStore) : EventWriter<ListName, ListEvent> =
+        store.Value
+        |> Seq.filter (fun e -> e.AggregateId = id)
+        |> ListEvent.fold (ToDoList.initial id ln)
+
+let writeEvent (store: InMemoryEventStore) : EventWriter<ListId, ListEvent> =
     fun e -> store.Value <- Seq.append store.Value [ e ]
 
 [<EntryPoint>]

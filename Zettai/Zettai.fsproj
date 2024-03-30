@@ -5,6 +5,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="Infrastructure.fs" />
     <Compile Include="Domain.fs" />
     <Compile Include="ZettaiHost.fs" />
     <Compile Include="Program.fs" />
