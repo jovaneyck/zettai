@@ -1,4 +1,4 @@
-﻿module Types
+﻿module Domain
 
 type Event<'tid, 'tdata> = { AggregateId: 'tid; Data: 'tdata }
 type CommandHandler<'tid, 'tcmd, 'tevent> = 'tcmd -> Event<'tid, 'tevent> list

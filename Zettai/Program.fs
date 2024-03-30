@@ -1,7 +1,7 @@
 module Program
 
 open Microsoft.Extensions.Hosting
-open Types
+open Domain
 
 type Database = Map<User, Map<ListName, ToDoList>> ref
 type InMemoryEventStore = Event<ListName, ListEvent> seq ref

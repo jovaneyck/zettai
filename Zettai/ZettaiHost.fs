@@ -6,7 +6,7 @@ open Microsoft.AspNetCore.Hosting
 open Microsoft.AspNetCore.Http
 open Microsoft.Extensions.DependencyInjection
 open System.Text.Json.Serialization
-open Types
+open Domain
 
 let showList (lookup: ListLookup) =
     fun (userName, listName) ->
@@ -51,9 +51,9 @@ let webApp (lookup: ListLookup) writeEvent =
     choose [ GET >=> route "/" >=> text "Hello world!"
              GET >=> routef "/todo/%s/%s" (showList lookup)
              POST
-             >=> routef "/todo/%s/%s" (addList (Types.handleCommand lookup) writeEvent)
+             >=> routef "/todo/%s/%s" (addList (handleCommand lookup) writeEvent)
              POST
-             >=> routef "/todo/%s/%s/item" (addItem (Types.handleCommand lookup) writeEvent)
+             >=> routef "/todo/%s/%s/item" (addItem (handleCommand lookup) writeEvent)
              RequestErrors.NOT_FOUND "Not Found" ]
 
 let configureApp (lookup: ListLookup) eventWriter (app: IApplicationBuilder) =

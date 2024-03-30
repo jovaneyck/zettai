@@ -3,8 +3,7 @@
 open Xunit
 open Swensen.Unquote
 
-
-open Types
+open Domain
 
 module UnitTests =
     module ListName =

@@ -6,7 +6,7 @@ open Microsoft.AspNetCore.Hosting
 open Microsoft.AspNetCore.TestHost
 open System.Text.Json
 
-open Types
+open Domain
 
 module AcceptanceTests =
     let deserialize<'a> (stream: System.IO.Stream) =
